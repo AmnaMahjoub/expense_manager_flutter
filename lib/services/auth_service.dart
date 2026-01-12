@@ -1,317 +1,188 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:expense_manager/helpers/app_initialization_helper.dart';
+import 'package:expense_manager/services/category_service.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  /// Récupérer l'utilisateur actuel
+  // Get current user
   User? get currentUser => _auth.currentUser;
 
-  /// Stream de l'état d'authentification
+  // Get current user ID
+  String? get currentUserId => _auth.currentUser?.uid;
+
+  // Auth state changes stream
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  /// Inscription avec initialisation automatique des catégories
-  Future<User?> register(String email, String password) async {
+  // Register new user
+  Future<UserCredential> register(String email, String password) async {
     try {
-      final result = await _auth.createUserWithEmailAndPassword(
+      // Create user
+      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      final user = result.user;
+      // Create user document in Firestore
+      await _createUserDocument(userCredential.user!);
 
-      if (user != null) {
-        // Créer le document utilisateur
-        await _db.collection('users').doc(user.uid).set({
-          'email': email,
-          'createdAt': Timestamp.now(),
-        });
+      // Initialize predefined categories for the new user
+      await CategoryService().initializePredefinedCategories();
 
-        // Initialiser les catégories prédéfinies
-        await AppInitializationHelper.initializeUserData();
-        print('✅ Utilisateur créé avec catégories prédéfinies');
-      }
-
-      return user;
+      return userCredential;
     } on FirebaseAuthException catch (e) {
-      print('❌ Erreur inscription: ${e.code}');
       throw _handleAuthException(e);
     } catch (e) {
-      print('❌ Erreur inattendue: $e');
-      rethrow;
+      throw 'Une erreur est survenue lors de l\'inscription';
     }
   }
 
-  /// Connexion avec vérification des catégories
-  Future<User?> login(String email, String password) async {
+  // Login
+  Future<UserCredential> login(String email, String password) async {
     try {
-      final result = await _auth.signInWithEmailAndPassword(
+      return await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
-
-      final user = result.user;
-
-      if (user != null) {
-        // Vérifier et créer les catégories si manquantes
-        await AppInitializationHelper.initializeUserData();
-        print('✅ Utilisateur connecté');
-      }
-
-      return user;
     } on FirebaseAuthException catch (e) {
-      print('❌ Erreur connexion: ${e.code}');
       throw _handleAuthException(e);
     } catch (e) {
-      print('❌ Erreur inattendue: $e');
-      rethrow;
+      throw 'Une erreur est survenue lors de la connexion';
     }
   }
 
-  /// Déconnexion
+  // Logout
   Future<void> logout() async {
     try {
       await _auth.signOut();
-      print('✅ Déconnexion réussie');
     } catch (e) {
-      print('❌ Erreur déconnexion: $e');
-      rethrow;
+      throw 'Erreur lors de la déconnexion';
     }
   }
 
-  /// Réinitialiser le mot de passe
-  Future<void> resetPassword(String email) async {
+  // Create user document
+  Future<void> _createUserDocument(User user) async {
+    try {
+      await _firestore.collection('users').doc(user.uid).set({
+        'uid': user.uid,
+        'email': user.email,
+        'displayName': user.displayName ?? user.email?.split('@')[0],
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print('Error creating user document: $e');
+    }
+  }
+
+  // Update user profile
+  Future<void> updateUserProfile({String? displayName, String? photoURL}) async {
+    try {
+      User? user = currentUser;
+      if (user != null) {
+        await user.updateDisplayName(displayName);
+        await user.updatePhotoURL(photoURL);
+        
+        // Update Firestore document
+        await _firestore.collection('users').doc(user.uid).update({
+          'displayName': displayName,
+          'photoURL': photoURL,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (e) {
+      throw 'Erreur lors de la mise à jour du profil';
+    }
+  }
+
+  // Send password reset email
+  Future<void> sendPasswordResetEmail(String email) async {
     try {
       await _auth.sendPasswordResetEmail(email: email);
-      print('✅ Email de réinitialisation envoyé');
     } on FirebaseAuthException catch (e) {
-      print('❌ Erreur réinitialisation: ${e.code}');
       throw _handleAuthException(e);
     }
   }
 
-  /// Changer le mot de passe
-  Future<void> changePassword({
-    required String currentPassword,
-    required String newPassword,
-  }) async {
-    final user = currentUser;
-    if (user == null || user.email == null) {
-      throw Exception('Utilisateur non connecté');
-    }
-
+  // Delete account
+  Future<void> deleteAccount() async {
     try {
-      // Ré-authentifier l'utilisateur
-      final credential = EmailAuthProvider.credential(
-        email: user.email!,
-        password: currentPassword,
-      );
-
-      await user.reauthenticateWithCredential(credential);
-      await user.updatePassword(newPassword);
-      print('✅ Mot de passe modifié');
-    } on FirebaseAuthException catch (e) {
-      print('❌ Erreur changement mot de passe: ${e.code}');
-      throw _handleAuthException(e);
-    }
-  }
-
-  /// Récupérer les données utilisateur
-  Future<Map<String, dynamic>?> getUserData() async {
-    final user = currentUser;
-    if (user == null) return null;
-
-    try {
-      final doc = await _db.collection('users').doc(user.uid).get();
-      
-      if (doc.exists) {
-        return doc.data();
+      User? user = currentUser;
+      if (user != null) {
+        // Delete user data from Firestore
+        await _deleteUserData(user.uid);
+        
+        // Delete auth account
+        await user.delete();
       }
-      
-      return null;
     } catch (e) {
-      print('❌ Erreur récupération données: $e');
-      return null;
+      throw 'Erreur lors de la suppression du compte';
     }
   }
 
-  /// Mettre à jour le profil utilisateur
-  Future<void> updateUserProfile({
-    String? displayName,
-    Map<String, dynamic>? additionalData,
-  }) async {
-    final user = currentUser;
-    if (user == null) throw Exception('Utilisateur non connecté');
-
+  // Delete all user data
+  Future<void> _deleteUserData(String userId) async {
     try {
-      // Mettre à jour Firebase Auth si displayName fourni
-      if (displayName != null) {
-        await user.updateDisplayName(displayName);
-      }
-
-      // Mettre à jour Firestore
-      Map<String, dynamic> updateData = {
-        'updatedAt': Timestamp.now(),
-      };
-
-      if (displayName != null) {
-        updateData['displayName'] = displayName;
-      }
-
-      if (additionalData != null) {
-        updateData.addAll(additionalData);
-      }
-
-      await _db.collection('users').doc(user.uid).update(updateData);
-      print('✅ Profil mis à jour');
-    } catch (e) {
-      print('❌ Erreur mise à jour profil: $e');
-      rethrow;
-    }
-  }
-
-  /// Supprimer le compte avec toutes ses données
-  Future<void> deleteAccount(String password) async {
-    final user = currentUser;
-    if (user == null || user.email == null) {
-      throw Exception('Utilisateur non connecté');
-    }
-
-    try {
-      // Ré-authentifier l'utilisateur
-      final credential = EmailAuthProvider.credential(
-        email: user.email!,
-        password: password,
-      );
-
-      await user.reauthenticateWithCredential(credential);
-
-      // Supprimer toutes les données utilisateur
-      await _deleteUserData(user.uid);
-
-      // Supprimer le document utilisateur
-      await _db.collection('users').doc(user.uid).delete();
-
-      // Supprimer le compte Firebase Auth
-      await user.delete();
-      print('✅ Compte supprimé');
-    } on FirebaseAuthException catch (e) {
-      print('❌ Erreur suppression compte: ${e.code}');
-      throw _handleAuthException(e);
-    }
-  }
-
-  /// Supprimer toutes les données utilisateur (transactions + catégories)
-  Future<void> _deleteUserData(String uid) async {
-    try {
-      final batch = _db.batch();
-
-      // Supprimer les transactions
-      final transactionsSnapshot = await _db
+      // Delete categories
+      final categoriesSnapshot = await _firestore
           .collection('users')
-          .doc(uid)
-          .collection('transactions')
-          .get();
-
-      for (var doc in transactionsSnapshot.docs) {
-        batch.delete(doc.reference);
-      }
-
-      // Supprimer les catégories
-      final categoriesSnapshot = await _db
-          .collection('users')
-          .doc(uid)
+          .doc(userId)
           .collection('categories')
           .get();
-
+      
       for (var doc in categoriesSnapshot.docs) {
-        batch.delete(doc.reference);
+        await doc.reference.delete();
       }
 
-      await batch.commit();
-      print('✅ Données utilisateur supprimées');
-    } catch (e) {
-      print('❌ Erreur suppression données: $e');
-      rethrow;
-    }
-  }
-
-  /// Obtenir les statistiques du compte
-  Future<Map<String, int>> getAccountStats() async {
-    final user = currentUser;
-    if (user == null) return {};
-
-    try {
-      // Compter les transactions
-      final transactionsSnapshot = await _db
+      // Delete transactions
+      final transactionsSnapshot = await _firestore
           .collection('users')
-          .doc(user.uid)
+          .doc(userId)
           .collection('transactions')
           .get();
+      
+      for (var doc in transactionsSnapshot.docs) {
+        await doc.reference.delete();
+      }
 
-      // Compter les catégories
-      final categoriesSnapshot = await _db
-          .collection('users')
-          .doc(user.uid)
-          .collection('categories')
-          .get();
-
-      return {
-        'transactions': transactionsSnapshot.docs.length,
-        'categories': categoriesSnapshot.docs.length,
-      };
+      // Delete user document
+      await _firestore.collection('users').doc(userId).delete();
     } catch (e) {
-      print('❌ Erreur statistiques: $e');
-      return {};
+      print('Error deleting user data: $e');
     }
   }
 
-  /// Gérer les exceptions d'authentification avec messages en français
+  // Handle authentication exceptions
   String _handleAuthException(FirebaseAuthException e) {
     switch (e.code) {
       case 'weak-password':
-        return 'Le mot de passe est trop faible (minimum 6 caractères)';
+        return 'Le mot de passe est trop faible';
       case 'email-already-in-use':
-        return 'Cet email est déjà utilisé par un autre compte';
+        return 'Cet email est déjà utilisé';
       case 'user-not-found':
-        return 'Aucun compte trouvé avec cet email';
+        return 'Aucun utilisateur trouvé avec cet email';
       case 'wrong-password':
         return 'Mot de passe incorrect';
       case 'invalid-email':
-        return 'Adresse email invalide';
+        return 'Email invalide';
       case 'user-disabled':
         return 'Ce compte a été désactivé';
       case 'too-many-requests':
-        return 'Trop de tentatives. Veuillez réessayer plus tard';
+        return 'Trop de tentatives. Réessayez plus tard';
       case 'operation-not-allowed':
         return 'Opération non autorisée';
-      case 'network-request-failed':
-        return 'Erreur de connexion. Vérifiez votre connexion internet';
-      case 'invalid-credential':
-        return 'Identifiants invalides';
-      case 'account-exists-with-different-credential':
-        return 'Un compte existe déjà avec cet email';
-      case 'requires-recent-login':
-        return 'Cette opération nécessite une connexion récente. Reconnectez-vous';
       default:
-        return 'Erreur d\'authentification: ${e.message ?? e.code}';
+        return 'Une erreur est survenue: ${e.message}';
     }
   }
 
-  /// Vérifier si l'utilisateur est connecté
-  bool isUserLoggedIn() {
-    return currentUser != null;
-  }
+  // Check if user is logged in
+  bool get isLoggedIn => currentUser != null;
 
-  /// Obtenir l'email de l'utilisateur connecté
-  String? getUserEmail() {
-    return currentUser?.email;
-  }
+  // Get user email
+  String? get userEmail => currentUser?.email;
 
-  /// Obtenir l'UID de l'utilisateur connecté
-  String? getUserId() {
-    return currentUser?.uid;
-  }
+  // Get user display name
+  String? get userDisplayName => currentUser?.displayName;
 }

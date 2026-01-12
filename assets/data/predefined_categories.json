@@ -1,0 +1,86 @@
+{
+  "expense_categories": [
+    {
+      "name": "Alimentation",
+      "icon": "restaurant",
+      "color": "orange"
+    },
+    {
+      "name": "Transport",
+      "icon": "directions_car",
+      "color": "blue"
+    },
+    {
+      "name": "Logement",
+      "icon": "home",
+      "color": "brown"
+    },
+    {
+      "name": "Santé",
+      "icon": "local_hospital",
+      "color": "red"
+    },
+    {
+      "name": "Loisirs",
+      "icon": "sports_esports",
+      "color": "purple"
+    },
+    {
+      "name": "Shopping",
+      "icon": "shopping_bag",
+      "color": "pink"
+    },
+    {
+      "name": "Éducation",
+      "icon": "school",
+      "color": "indigo"
+    },
+    {
+      "name": "Factures",
+      "icon": "receipt",
+      "color": "teal"
+    },
+    {
+      "name": "Abonnements",
+      "icon": "subscriptions",
+      "color": "cyan"
+    },
+    {
+      "name": "Autres",
+      "icon": "more_horiz",
+      "color": "grey"
+    }
+  ],
+  "income_categories": [
+    {
+      "name": "Salaire",
+      "icon": "account_balance_wallet",
+      "color": "green"
+    },
+    {
+      "name": "Freelance",
+      "icon": "work",
+      "color": "teal"
+    },
+    {
+      "name": "Investissements",
+      "icon": "trending_up",
+      "color": "blue"
+    },
+    {
+      "name": "Cadeaux",
+      "icon": "card_giftcard",
+      "color": "pink"
+    },
+    {
+      "name": "Remboursements",
+      "icon": "replay",
+      "color": "orange"
+    },
+    {
+      "name": "Autres",
+      "icon": "more_horiz",
+      "color": "grey"
+    }
+  ]
+}

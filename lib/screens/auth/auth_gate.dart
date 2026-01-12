@@ -1,19 +1,20 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'login_screen.dart';
-import 'home/home_screen.dart';
+import 'package:expense_manager/screens/auth/login_screen.dart';
+import 'package:expense_manager/screens/home_screen.dart';
 
 class AuthGate extends StatelessWidget {
-  const AuthGate({Key? key}) : super(key: key);
+  const AuthGate({super.key});
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
         if (snapshot.hasData) {
-          return HomeScreen();
+          return const HomeScreen();
         }
-        return LoginScreen();
+        return const LoginScreen();
       },
     );
   }
