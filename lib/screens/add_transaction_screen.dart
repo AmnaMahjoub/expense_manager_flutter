@@ -3,10 +3,13 @@ import 'package:expense_manager/models/transaction_model.dart';
 import 'package:expense_manager/models/category_model.dart';
 import 'package:expense_manager/services/transaction_service.dart';
 import 'package:expense_manager/services/category_service.dart';
+import 'package:expense_manager/theme/app_theme.dart';
+import 'package:expense_manager/utils/category_icon_utils.dart';
+import 'package:expense_manager/widgets/custom_button.dart';
 
 class AddTransactionScreen extends StatefulWidget {
-  final TransactionModel? transaction; // Pour la modification
-  final String? categoryId; // Pour pré-sélectionner une catégorie
+  final TransactionModel? transaction;
+  final String? categoryId;
 
   const AddTransactionScreen({
     super.key,
@@ -37,13 +40,11 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     isEditMode = widget.transaction != null;
     
     if (isEditMode) {
-      // Mode modification
       _amountController.text = widget.transaction!.amount.toString();
       selectedType = widget.transaction!.type;
       selectedCategoryId = widget.transaction!.categoryId;
       selectedDate = widget.transaction!.date;
     } else if (widget.categoryId != null) {
-      // Pré-sélection de catégorie
       selectedCategoryId = widget.categoryId;
     }
     
@@ -57,9 +58,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   }
 
   Future<void> _loadCategories() async {
-    setState(() {
-      isLoading = true;
-    });
+    setState(() => isLoading = true);
 
     try {
       String type = selectedType == TransactionType.income ? 'income' : 'expense';
@@ -69,11 +68,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         categories = cats;
         isLoading = false;
         
-        // Si en mode édition et la catégorie actuelle n'est pas dans la liste, la charger
         if (isEditMode && selectedCategoryId != null) {
           bool categoryExists = cats.any((cat) => cat.id == selectedCategoryId);
           if (!categoryExists) {
-            // La catégorie existe mais est d'un autre type, réinitialiser
             selectedCategoryId = cats.isNotEmpty ? cats.first.id : null;
           }
         } else if (selectedCategoryId == null && cats.isNotEmpty) {
@@ -81,10 +78,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         }
       });
     } catch (e) {
-      print('Erreur lors du chargement des catégories: $e');
-      setState(() {
-        isLoading = false;
-      });
+      print('Erreur: $e');
+      setState(() => isLoading = false);
     }
   }
 
@@ -94,12 +89,22 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       initialDate: selectedDate,
       firstDate: DateTime(2020),
       lastDate: DateTime(2100),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: selectedType == TransactionType.expense 
+                  ? AppTheme.expenseColor 
+                  : AppTheme.incomeColor,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
     
     if (picked != null && picked != selectedDate) {
-      setState(() {
-        selectedDate = picked;
-      });
+      setState(() => selectedDate = picked);
     }
   }
 
@@ -109,7 +114,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Veuillez sélectionner une catégorie'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.expenseColor,
           ),
         );
         return;
@@ -119,7 +124,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         double amount = double.parse(_amountController.text);
         
         if (isEditMode) {
-          // Modification
           TransactionModel updatedTransaction = widget.transaction!.copyWith(
             amount: amount,
             categoryId: selectedCategoryId!,
@@ -132,14 +136,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Transaction modifiée avec succès'),
-                backgroundColor: Colors.green,
+                content: Text('✅ Transaction modifiée avec succès'),
+                backgroundColor: AppTheme.incomeColor,
               ),
             );
             Navigator.pop(context);
           }
         } else {
-          // Ajout
           TransactionModel newTransaction = TransactionModel(
             id: '',
             amount: amount,
@@ -154,8 +157,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Transaction ajoutée avec succès'),
-                backgroundColor: Colors.green,
+                content: Text('✅ Transaction ajoutée avec succès'),
+                backgroundColor: AppTheme.incomeColor,
               ),
             );
             Navigator.pop(context);
@@ -165,8 +168,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Erreur: $e'),
-              backgroundColor: Colors.red,
+              content: Text('❌ Erreur: $e'),
+              backgroundColor: AppTheme.expenseColor,
             ),
           );
         }
@@ -174,59 +177,18 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     }
   }
 
-  IconData _getCategoryIcon(String iconName) {
-    switch (iconName.toLowerCase()) {
-      case 'home':
-        return Icons.home;
-      case 'transport':
-        return Icons.directions_car;
-      case 'food':
-        return Icons.restaurant;
-      case 'health':
-        return Icons.medical_services;
-      case 'entertainment':
-        return Icons.sports_esports;
-      case 'education':
-        return Icons.school;
-      case 'shopping':
-        return Icons.shopping_bag;
-      case 'salary':
-      case 'money':
-        return Icons.attach_money;
-      default:
-        return Icons.category;
-    }
-  }
-
-  Color _getCategoryColor(String colorName) {
-    switch (colorName.toLowerCase()) {
-      case 'red':
-        return Colors.red;
-      case 'green':
-        return Colors.green;
-      case 'blue':
-        return Colors.blue;
-      case 'orange':
-        return Colors.orange;
-      case 'purple':
-        return Colors.purple;
-      case 'teal':
-        return Colors.teal;
-      case 'pink':
-        return Colors.pink;
-      case 'amber':
-        return Colors.amber;
-      default:
-        return Colors.blue;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    final isExpense = selectedType == TransactionType.expense;
+    final themeColor = isExpense ? AppTheme.expenseColor : AppTheme.incomeColor;
+
     return Scaffold(
+      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         title: Text(isEditMode ? 'Modifier transaction' : 'Ajouter transaction'),
         centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -237,181 +199,265 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Sélecteur de type
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ChoiceChip(
-                            label: const Text('Dépense'),
-                            selected: selectedType == TransactionType.expense,
-                            selectedColor: Colors.red.shade100,
-                            onSelected: (selected) {
-                              if (selected) {
-                                setState(() {
-                                  selectedType = TransactionType.expense;
-                                  selectedCategoryId = null;
-                                });
-                                _loadCategories();
-                              }
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ChoiceChip(
-                            label: const Text('Revenu'),
-                            selected: selectedType == TransactionType.income,
-                            selectedColor: Colors.green.shade100,
-                            onSelected: (selected) {
-                              if (selected) {
-                                setState(() {
-                                  selectedType = TransactionType.income;
-                                  selectedCategoryId = null;
-                                });
-                                _loadCategories();
-                              }
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-
+                    _buildTypeSelector(themeColor),
                     const SizedBox(height: 20),
-
-                    // Montant
-                    TextFormField(
-                      controller: _amountController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: const InputDecoration(
-                        labelText: 'Montant',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.attach_money),
-                        suffixText: 'د.ت',
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Veuillez entrer un montant';
-                        }
-                        if (double.tryParse(value) == null) {
-                          return 'Montant invalide';
-                        }
-                        if (double.parse(value) <= 0) {
-                          return 'Le montant doit être positif';
-                        }
-                        return null;
-                      },
-                    ),
-
+                    _buildAmountField(themeColor),
                     const SizedBox(height: 20),
-
-                    // Sélection de la date
-                    InkWell(
-                      onTap: () => _selectDate(context),
-                      child: InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: 'Date',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.calendar_today),
-                        ),
-                        child: Text(
-                          "${selectedDate.day}/${selectedDate.month}/${selectedDate.year}",
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                      ),
-                    ),
-
+                    _buildDateSelector(themeColor),
                     const SizedBox(height: 20),
-
-                    // Sélection de la catégorie
-                    const Text(
-                      'Catégorie',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 10),
-
-                    if (categories.isEmpty)
-                      const Card(
-                        child: Padding(
-                          padding: EdgeInsets.all(16.0),
-                          child: Text(
-                            'Aucune catégorie disponible pour ce type',
-                            style: TextStyle(color: Colors.grey),
-                          ),
-                        ),
-                      )
-                    else
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children: categories.map((category) {
-                          bool isSelected = selectedCategoryId == category.id;
-                          return InkWell(
-                            onTap: () {
-                              setState(() {
-                                selectedCategoryId = category.id;
-                              });
-                            },
-                            child: Container(
-                              width: 100,
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: isSelected 
-                                    ? _getCategoryColor(category.color).withOpacity(0.3)
-                                    : Colors.grey.shade200,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: isSelected 
-                                      ? _getCategoryColor(category.color)
-                                      : Colors.transparent,
-                                  width: 2,
-                                ),
-                              ),
-                              child: Column(
-                                children: [
-                                  Icon(
-                                    _getCategoryIcon(category.icon),
-                                    size: 30,
-                                    color: _getCategoryColor(category.color),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    category.name,
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(fontSize: 12),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-
+                    _buildCategorySelector(),
                     const SizedBox(height: 30),
-
-                    // Bouton Enregistrer
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: _saveTransaction,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: selectedType == TransactionType.expense 
-                              ? Colors.red 
-                              : Colors.green,
-                          foregroundColor: Colors.white,
-                        ),
-                        child: Text(
-                          isEditMode ? 'Modifier' : 'Enregistrer',
-                          style: const TextStyle(fontSize: 18),
-                        ),
-                      ),
-                    ),
+                    _buildSaveButton(themeColor),
                   ],
                 ),
               ),
             ),
+    );
+  }
+
+  Widget _buildTypeSelector(Color themeColor) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildTypeOption(
+              label: 'Dépense',
+              type: TransactionType.expense,
+              icon: Icons.arrow_downward,
+              color: AppTheme.expenseColor,
+            ),
+          ),
+          Expanded(
+            child: _buildTypeOption(
+              label: 'Revenu',
+              type: TransactionType.income,
+              icon: Icons.arrow_upward,
+              color: AppTheme.incomeColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTypeOption({
+    required String label,
+    required TransactionType type,
+    required IconData icon,
+    required Color color,
+  }) {
+    final isSelected = selectedType == type;
+
+    return InkWell(
+      onTap: () {
+        setState(() {
+          selectedType = type;
+          selectedCategoryId = null;
+        });
+        _loadCategories();
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: isSelected ? color.withOpacity(0.1) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: isSelected ? color : AppTheme.textSecondary),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? color : AppTheme.textSecondary,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAmountField(Color themeColor) {
+    return TextFormField(
+      controller: _amountController,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+      decoration: InputDecoration(
+        labelText: 'Montant',
+        prefixIcon: Icon(Icons.attach_money, color: themeColor),
+        suffixText: 'د.ت',
+        suffixStyle: TextStyle(color: themeColor, fontWeight: FontWeight.bold),
+        filled: true,
+        fillColor: Colors.white,
+      ),
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return 'Veuillez entrer un montant';
+        }
+        if (double.tryParse(value) == null) {
+          return 'Montant invalide';
+        }
+        if (double.parse(value) <= 0) {
+          return 'Le montant doit être positif';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildDateSelector(Color themeColor) {
+    return InkWell(
+      onTap: () => _selectDate(context),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppTheme.lightGrey),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.calendar_today, color: themeColor),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Date',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "${selectedDate.day}/${selectedDate.month}/${selectedDate.year}",
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_drop_down, color: AppTheme.textSecondary),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategorySelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Catégorie',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (categories.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(
+              child: Text(
+                'Aucune catégorie disponible pour ce type',
+                style: TextStyle(color: AppTheme.textSecondary),
+              ),
+            ),
+          )
+        else
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: categories.map((category) {
+              bool isSelected = selectedCategoryId == category.id;
+              final categoryColor = CategoryIconUtils.getColor(category.color);
+              final categoryIcon = CategoryIconUtils.getIcon(category.icon);
+              
+              return InkWell(
+                onTap: () => setState(() => selectedCategoryId = category.id),
+                child: Container(
+                  width: 100,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isSelected 
+                        ? categoryColor.withOpacity(0.2)
+                        : Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected ? categoryColor : AppTheme.lightGrey,
+                      width: isSelected ? 2 : 1,
+                    ),
+                    boxShadow: isSelected ? [
+                      BoxShadow(
+                        color: categoryColor.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ] : [],
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        categoryIcon,
+                        size: 32,
+                        color: categoryColor,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        category.name,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                          color: AppTheme.textPrimary,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSaveButton(Color themeColor) {
+    return CustomButton(
+      text: isEditMode ? 'Modifier' : 'Enregistrer',
+      onPressed: _saveTransaction,
+      gradient: selectedType == TransactionType.expense 
+          ? AppTheme.expenseGradient 
+          : AppTheme.incomeGradient,
+      icon: isEditMode ? Icons.check : Icons.add,
     );
   }
 }
