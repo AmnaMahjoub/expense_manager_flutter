@@ -40,6 +40,11 @@ dependencies:
   pie_chart: ^5.4.0
   intl: ^0.20.2
   fl_chart: ^1.1.1
+  pdf: ^3.10.7
+  printing: ^5.11.0
+  path_provider: ^2.1.5
+  open_file: ^3.5.11
+  flutter_launcher_icons: ^0.14.4
 
 dev_dependencies:
   flutter_test:
@@ -65,6 +70,7 @@ flutter:
 
   assets:
     - assets/data/predefined_categories.json
+    - assets/icon/app_icon.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:
@@ -96,3 +102,9 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+

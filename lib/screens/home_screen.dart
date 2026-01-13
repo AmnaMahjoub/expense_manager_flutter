@@ -15,6 +15,7 @@ import 'package:expense_manager/utils/category_icon_utils.dart';
 import 'package:expense_manager/screens/notification_screen.dart';
 import 'package:expense_manager/screens/budget_screen.dart';
 
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -234,6 +235,7 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: selectedType == TransactionType.expense 
           ? AppTheme.expenseColor 
           : AppTheme.incomeColor,
+
       flexibleSpace: FlexibleSpaceBar(
         title: const Text(
           'Dashboard',
@@ -737,7 +739,6 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         children: [
           Container(
-            height: 200,
             decoration: const BoxDecoration(
               gradient: AppTheme.primaryGradient,
             ),
@@ -849,4 +850,5 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+  
 }
