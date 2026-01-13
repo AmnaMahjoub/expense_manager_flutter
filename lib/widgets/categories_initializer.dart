@@ -17,6 +17,7 @@ class CategoriesInitializer extends StatefulWidget {
 
 class _CategoriesInitializerState extends State<CategoriesInitializer> {
   final CategoryService _categoryService = CategoryService();
+  // ignore: unused_field
   bool _isInitialized = false;
   bool _isLoading = true;
   String? _error;

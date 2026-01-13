@@ -12,6 +12,8 @@ import 'package:expense_manager/screens/category_transactions_screen.dart';
 import 'package:expense_manager/theme/app_theme.dart';
 import 'package:expense_manager/widgets/gradient_card.dart';
 import 'package:expense_manager/utils/category_icon_utils.dart';
+import 'package:expense_manager/screens/notification_screen.dart';
+import 'package:expense_manager/screens/budget_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -803,6 +805,32 @@ class _HomeScreenState extends State<HomeScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => const GraphicsScreen()),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.account_balance_wallet),
+                  title: const Text('Budgets'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const BudgetScreen(),
+                      ),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.notifications),
+                  title: const Text('Notifications'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const NotificationScreen(),
+                      ),
                     );
                   },
                 ),
